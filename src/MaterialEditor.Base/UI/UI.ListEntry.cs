@@ -418,10 +418,10 @@ namespace MaterialEditorAPI
                         ColorBInput.onEndEdit.RemoveAllListeners();
                         ColorAInput.onEndEdit.RemoveAllListeners();
 
-                        ColorRInput.text = item.ColorValue.r.ToString();
-                        ColorGInput.text = item.ColorValue.g.ToString();
-                        ColorBInput.text = item.ColorValue.b.ToString();
-                        ColorAInput.text = item.ColorValue.a.ToString();
+                        ColorRInput.text = ((Color32)item.ColorValue).r.ToString();
+                        ColorGInput.text = ((Color32)item.ColorValue).g.ToString();
+                        ColorBInput.text = ((Color32)item.ColorValue).b.ToString();
+                        ColorAInput.text = ((Color32)item.ColorValue).a.ToString();
 
                         ColorEditButton.image.color = item.ColorValue;
 

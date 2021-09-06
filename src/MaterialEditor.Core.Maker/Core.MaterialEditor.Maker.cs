@@ -8,6 +8,9 @@ using MaterialEditorAPI;
 using System.Collections;
 using UnityEngine;
 using static MaterialEditorAPI.MaterialAPI;
+using static MaterialEditorAPI.MaterialEditorPluginBase;
+using System.Collections.Generic;
+using System.IO;
 #if AI || HS2
 using AIChara;
 using ChaClothesComponent = AIChara.CmpClothes;
@@ -91,6 +94,9 @@ namespace KK_Plugins.MaterialEditor
             e.AddControl(new MakerButton("Material Editor (Body)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("body"));
             e.AddControl(new MakerButton("Material Editor (Face)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("face"));
             e.AddControl(new MakerButton("Material Editor (All)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter());
+            e.AddControl(new MakerButton("Export Colors for KKBP", MakerConstants.Face.All, this)).OnClick.AddListener(() => ExportColors());
+            //e.AddControl(new MakerButton("Export All MC Masks for KKBP", MakerConstants.Face.All, this)).OnClick.AddListener(() => ExportMCMasks());
+
 
             e.AddControl(new MakerButton("Material Editor", MakerConstants.Clothes.Top, this)).OnClick.AddListener(() => UpdateUIClothes(0));
             e.AddControl(new MakerButton("Material Editor", MakerConstants.Clothes.Bottom, this)).OnClick.AddListener(() => UpdateUIClothes(1));
@@ -268,6 +274,161 @@ namespace KK_Plugins.MaterialEditor
                 PopulateList(accessory, new ObjectData(AccessoriesApi.SelectedMakerAccSlot, MaterialEditorCharaController.ObjectType.Accessory));
         }
 
+        public void ExportColors()
+        {
+            if (!MakerAPI.InsideAndLoaded)
+                return;
+
+            var chaControl = MakerAPI.GetCharacterControl();
+            string jsonString = "";
+
+            // Face Blush
+            {
+                var color1 = new Color32(0, 0, 0, 0);
+                jsonString = jsonString + JsonUtility.ToJson(new ColorDataCustom("face_blush_color", "This value is in (KK Character Maker): Face->Makeup->Cheek Color", color1)) + ",\n";
+            }
+
+            // Get Body Colors
+            {
+                var charaGameObject = chaControl.gameObject;
+                IEnumerable<Renderer> rendList = GetRendererList(charaGameObject);
+                Dictionary<string, Material> matList = new Dictionary<string, Material>();
+
+                foreach (var rend in rendList)
+                {
+                    foreach (var mat in GetMaterials(charaGameObject, rend))
+                    {
+                        matList[mat.NameFormatted()] = mat;
+                    }
+                }
+
+                foreach (var mat in matList.Values)
+                {
+                    string materialName = mat.NameFormatted();
+                    var color1 = mat.GetColor($"_Color");
+                    var color2 = new Color32(0, 0, 0, 0);
+                    var color3 = new Color32(0, 0, 0, 0);
+                    var color4 = new Color32(0, 0, 0, 0);
+
+                    if (materialName == "cf_m_mayuge_00" || materialName == "cf_m_eyeline_00_up" || materialName == "cf_m_tang"){
+                        color1 = mat.GetColor($"_Color");
+                        jsonString = jsonString + JsonUtility.ToJson(new ColorData(materialName, color1, color2, color3, color4)) + ",\n";
+                    }
+                    if (materialName == "cf_m_body"){
+                        color1 = mat.GetColor($"_overcolor1");
+                        jsonString = jsonString + JsonUtility.ToJson(new ColorData(materialName, color1, color2, color3, color4)) + ",\n";
+                    }
+                }
+            }
+
+            // Get Hair Colors
+            {
+                var hairGameObject = chaControl.GetHair()[0];
+                IEnumerable<Renderer> rendList = GetRendererList(hairGameObject);
+                Dictionary<string, Material> matList = new Dictionary<string, Material>();
+
+                foreach (var rend in rendList)
+                {
+                    foreach (var mat in GetMaterials(hairGameObject, rend))
+                    {
+                        matList[mat.NameFormatted()] = mat;
+                    }
+                }
+
+                foreach (var mat in matList.Values)
+                {
+                    string materialName = "Hair";
+                    var color1 = mat.GetColor($"_Color");
+                    var color2 = mat.GetColor($"_Color2");
+                    var color3 = mat.GetColor($"_Color3");
+                    var color4 = mat.GetColor($"_LineColor");
+
+                    jsonString = jsonString + JsonUtility.ToJson(new ColorData(materialName, color1, color2, color3, color4)) + ",\n";
+                    break;
+                }
+            }
+
+            // Get Acc Colors
+            var accessories = chaControl.GetAccessoryObjects();
+            foreach (var acc in accessories)
+            {
+                IEnumerable<Renderer> rendList = GetRendererList(acc);
+                Dictionary<string, Material> matList = new Dictionary<string, Material>();
+
+                foreach (var rend in rendList)
+                {
+                    foreach (var mat in GetMaterials(acc, rend))
+                    {
+                        matList[mat.NameFormatted()] = mat;
+                    }
+                }
+
+                foreach (var mat in matList.Values)
+                {
+                    string materialName = mat.NameFormatted();
+                    var color1 = mat.GetColor($"_Color");
+                    var color2 = mat.GetColor($"_Color2");
+                    var color3 = mat.GetColor($"_Color3");
+                    var color4 = new Color32(0, 0, 0, 0);
+                    jsonString = jsonString + JsonUtility.ToJson(new ColorData(materialName, color1, color2, color3, color4)) + ",\n";
+                }
+            }
+
+            // Cleanup Json
+            jsonString = jsonString.Substring(0, jsonString.Length - 2);
+            jsonString = '[' + jsonString + ']';
+
+            //Console.WriteLine(jsonData);
+
+            // Export Colors
+            string exportFilePath = Path.Combine(MaterialEditorPluginBase.ExportPath, "KK_Colors.json");
+            System.IO.File.WriteAllText(exportFilePath, jsonString);
+            Utilities.OpenFileInExplorer(exportFilePath);
+        }
+
+/*        public void ExportMCMasks()
+        {
+            if (!MakerAPI.InsideAndLoaded)
+                return;
+
+            var chaControl = MakerAPI.GetCharacterControl();
+
+            // Export Body MC Masks
+            {
+                var charaGameObject = chaControl.gameObject;
+                IEnumerable<Renderer> rendList = GetRendererList(charaGameObject);
+                Dictionary<string, Material> matList = new Dictionary<string, Material>();
+
+                foreach (var rend in rendList)
+                {
+                    foreach (var mat in GetMaterials(charaGameObject, rend))
+                    {
+                        matList[mat.NameFormatted()] = mat;
+                    }
+                }
+
+                foreach (var mat in matList.Values)
+                {
+                    if(mat.GetTexture("_ColorMask") != null)
+                    {
+                        ExportTexture(mat, "ColorMask");
+                    }
+                }
+            }
+        }*/
+
+/*        private static void ExportTexture(Material mat, string property)
+        {
+            var tex = mat.GetTexture($"_{property}");
+            if (tex == null) return;
+            var matName = mat.NameFormatted();
+            matName = string.Concat(matName.Split(Path.GetInvalidFileNameChars())).Trim();
+            string filename = Path.Combine(MaterialEditorPluginBase.ExportPath, $"_Export_{DateTime.Now:yyyy-MM-dd-HH-mm-ss}_{matName}_{property}.png");
+            SaveTex(tex, filename);
+            MaterialEditorPluginBase.Logger.LogInfo($"Exported {filename}");
+            Utilities.OpenFileInExplorer(filename);
+        }*/
+
         /// <summary>
         /// Shows the MaterialEditor UI for the specified hair index or refreshes the UI if already open
         /// </summary>
@@ -437,5 +598,37 @@ namespace KK_Plugins.MaterialEditor
             ObjectData objectData = (ObjectData)data;
             MaterialEditorPlugin.GetCharaController(MakerAPI.GetCharacterControl()).RemoveMaterialFloatProperty(objectData.Slot, objectData.ObjectType, material, propertyName, go);
         }
+    }
+}
+
+[System.Serializable]
+public class ColorData{
+    public string materialName;
+    public Color32 color1;
+    public Color32 color2;
+    public Color32 color3;
+    public Color32 color4;
+
+    public ColorData(string materialName, Color color1, Color color2, Color color3, Color32 color4)
+    {
+        this.materialName = materialName;
+        this.color1 = color1;
+        this.color2 = color2;
+        this.color3 = color3;
+        this.color4 = color4;
+    }
+}
+
+[System.Serializable]
+public class ColorDataCustom{
+    public string materialName;
+    public string note;
+    public Color32 color1;
+
+    public ColorDataCustom(string materialName, string note, Color color1)
+    {
+        this.materialName = materialName;
+        this.note = note;
+        this.color1 = color1;
     }
 }
