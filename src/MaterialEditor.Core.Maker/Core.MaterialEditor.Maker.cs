@@ -11,6 +11,8 @@ using static MaterialEditorAPI.MaterialAPI;
 using static MaterialEditorAPI.MaterialEditorPluginBase;
 using System.Collections.Generic;
 using System.IO;
+using TMPro;
+using ChaCustom;
 #if AI || HS2
 using AIChara;
 using ChaClothesComponent = AIChara.CmpClothes;
@@ -95,6 +97,7 @@ namespace KK_Plugins.MaterialEditor
             e.AddControl(new MakerButton("Material Editor (Face)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("face"));
             e.AddControl(new MakerButton("Material Editor (All)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter());
             e.AddControl(new MakerButton("Export Colors for KKBP", MakerConstants.Face.All, this)).OnClick.AddListener(() => ExportColors());
+            //e.AddControl(new MakerButton("Dev", MakerConstants.Face.All, this)).OnClick.AddListener(() => DebugStuff());
             //e.AddControl(new MakerButton("Export All MC Masks for KKBP", MakerConstants.Face.All, this)).OnClick.AddListener(() => ExportMCMasks());
 
 
@@ -274,6 +277,38 @@ namespace KK_Plugins.MaterialEditor
                 PopulateList(accessory, new ObjectData(AccessoriesApi.SelectedMakerAccSlot, MaterialEditorCharaController.ObjectType.Accessory));
         }
 
+/*        public void DebugStuff()
+        {
+            GameObject[] allGOs = FindObjectsOfType<GameObject>();
+            foreach (var go in allGOs)
+            {
+                if (go.name == "textWinTitle")
+                {
+                    //print(go);
+                }
+                var text = go.GetComponentInChildren<TextMeshProUGUI>();
+                if (text != null)
+                {
+                    //print(go);
+                    //print(text.text);
+                }
+                //print(go);
+            }
+            var cvsColor = GameObject.Find("CvsColor");
+            foreach (var comp in cvsColor.GetComponents(typeof(Component)))
+            {
+                print(comp);
+            }
+            print(cvsColor.transform.parent.gameObject);
+            var textBut = GameObject.Find("btnColor02");
+            //print(textBut);
+            foreach (var comp in textBut.GetComponents(typeof(Component)))
+            {
+                //print(comp);
+            }
+            //print(textBut.transform.parent.gameObject);
+        }*/
+
         public void ExportColors()
         {
             if (!MakerAPI.InsideAndLoaded)
@@ -323,29 +358,31 @@ namespace KK_Plugins.MaterialEditor
 
             // Get Hair Colors
             {
-                var hairGameObject = chaControl.GetHair()[0];
-                IEnumerable<Renderer> rendList = GetRendererList(hairGameObject);
-                Dictionary<string, Material> matList = new Dictionary<string, Material>();
-
-                foreach (var rend in rendList)
+                var charaHairs = chaControl.GetHair();
+                foreach (var hair in charaHairs)
                 {
-                    foreach (var mat in GetMaterials(hairGameObject, rend))
+                    IEnumerable<Renderer> rendList = GetRendererList(hair);
+                    Dictionary<string, Material> matList = new Dictionary<string, Material>();
+
+                    foreach (var rend in rendList)
                     {
-                        matList[mat.NameFormatted()] = mat;
+                        foreach (var mat in GetMaterials(hair, rend))
+                        {
+                            matList[mat.NameFormatted()] = mat;
+                        }
                     }
-                }
 
-                foreach (var mat in matList.Values)
-                {
-                    string materialName = "Hair";
-                    var color1 = mat.GetColor($"_Color");
-                    var color2 = mat.GetColor($"_Color2");
-                    var color3 = mat.GetColor($"_Color3");
-                    var color4 = mat.GetColor($"_LineColor");
+                    foreach (var mat in matList.Values)
+                    {
+                        string materialName = mat.NameFormatted();
+                        var color1 = mat.GetColor($"_Color");
+                        var color2 = mat.GetColor($"_Color2");
+                        var color3 = mat.GetColor($"_Color3");
+                        var color4 = mat.GetColor($"_LineColor");
 
-                    jsonString = jsonString + JsonUtility.ToJson(new ColorData(materialName, color1, color2, color3, color4)) + ",\n";
-                    break;
-                }
+                        jsonString = jsonString + JsonUtility.ToJson(new ColorData(materialName, color1, color2, color3, color4)) + ",\n";
+                    }
+                } 
             }
 
             // Get Acc Colors
